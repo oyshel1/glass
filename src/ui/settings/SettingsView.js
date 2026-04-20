@@ -652,10 +652,6 @@ export class SettingsView extends LitElement {
 
 
     async handleSaveKey(provider) {
-        const input = this.shadowRoot.querySelector(`#key-input-${provider}`);
-        if (!input) return;
-        const key = input.value;
-        
         // For Ollama, we need to ensure it's ready first
         if (provider === 'ollama') {
         this.saving = true;
@@ -681,12 +677,18 @@ export class SettingsView extends LitElement {
             return;
         }
         
-        // For Whisper, just enable it
+        // For Whisper, enable and immediately initialize (downloads binary if needed)
         if (provider === 'whisper') {
             this.saving = true;
             const result = await window.api.settingsView.validateKey({ provider, key: 'local' });
-            
+
             if (result.success) {
+                // Trigger binary installation now so the user sees progress feedback
+                try {
+                    await window.api.installLocalAI('whisper', {});
+                } catch (e) {
+                    console.warn('[SettingsView] Whisper init error (non-fatal):', e);
+                }
                 await this.refreshModelData();
             } else {
                 alert(`Failed to enable Whisper: ${result.error}`);
@@ -696,9 +698,13 @@ export class SettingsView extends LitElement {
         }
         
         // For other providers, use the normal flow
+        const input = this.shadowRoot.querySelector(`#key-input-${provider}`);
+        if (!input) return;
+        const key = input.value;
+
         this.saving = true;
         const result = await window.api.settingsView.validateKey({ provider, key });
-        
+
         if (result.success) {
             await this.refreshModelData();
         } else {

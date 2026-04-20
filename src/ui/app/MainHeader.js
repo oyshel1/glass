@@ -369,26 +369,42 @@ export class MainHeader extends LitElement {
     async handleMouseDown(e) {
         e.preventDefault();
 
-        const initialPosition = await window.api.mainHeader.getHeaderPosition();
-
+        // Set dragState and register listeners BEFORE the async call so a fast
+        // mouseup during the IPC round-trip is never missed.
         this.dragState = {
             initialMouseX: e.screenX,
             initialMouseY: e.screenY,
-            initialWindowX: initialPosition.x,
-            initialWindowY: initialPosition.y,
+            initialWindowX: 0,
+            initialWindowY: 0,
             moved: false,
+            ready: false,
         };
 
         window.addEventListener('mousemove', this.handleMouseMove, { capture: true });
         window.addEventListener('mouseup', this.handleMouseUp, { once: true, capture: true });
+
+        const initialPosition = await window.api.mainHeader.getHeaderPosition();
+
+        // mouseup fired during the await — listener already cleaned up dragState
+        if (!this.dragState) return;
+
+        this.dragState.initialWindowX = initialPosition.x;
+        this.dragState.initialWindowY = initialPosition.y;
+        this.dragState.ready = true;
     }
 
     handleMouseMove(e) {
-        if (!this.dragState) return;
+        if (!this.dragState?.ready) return;
+
+        // Safety net: mouse button released but mouseup was somehow missed
+        if (e.buttons === 0) {
+            this.handleMouseUp(e);
+            return;
+        }
 
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
-        
+
         if (deltaX > 3 || deltaY > 3) {
             this.dragState.moved = true;
         }

@@ -42,7 +42,7 @@ async function createSTT({ apiKey, language = "en-US", callbacks = {}, ...config
 
   const session = await liveClient.live.connect({
 
-    model: 'gemini-live-2.5-flash-preview',
+    model: 'gemini-2.0-flash-live-001',
     callbacks: {
       ...callbacks,
       onMessage: (msg) => {

@@ -482,22 +482,35 @@ export class ApiKeyHeader extends LitElement {
         e.preventDefault();
 
         if (!window.api?.apiKeyHeader) return;
-        const initialPosition = await window.api.apiKeyHeader.getHeaderPosition();
 
         this.dragState = {
             initialMouseX: e.screenX,
             initialMouseY: e.screenY,
-            initialWindowX: initialPosition.x,
-            initialWindowY: initialPosition.y,
+            initialWindowX: 0,
+            initialWindowY: 0,
             moved: false,
+            ready: false,
         };
 
-        window.addEventListener('mousemove', this.handleMouseMove);
-        window.addEventListener('mouseup', this.handleMouseUp, { once: true });
+        window.addEventListener('mousemove', this.handleMouseMove, { capture: true });
+        window.addEventListener('mouseup', this.handleMouseUp, { once: true, capture: true });
+
+        const initialPosition = await window.api.apiKeyHeader.getHeaderPosition();
+
+        if (!this.dragState) return;
+
+        this.dragState.initialWindowX = initialPosition.x;
+        this.dragState.initialWindowY = initialPosition.y;
+        this.dragState.ready = true;
     }
 
     handleMouseMove(e) {
-        if (!this.dragState) return;
+        if (!this.dragState?.ready) return;
+
+        if (e.buttons === 0) {
+            this.handleMouseUp(e);
+            return;
+        }
 
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
@@ -519,7 +532,7 @@ export class ApiKeyHeader extends LitElement {
 
         const wasDragged = this.dragState.moved;
 
-        window.removeEventListener('mousemove', this.handleMouseMove);
+        window.removeEventListener('mousemove', this.handleMouseMove, { capture: true });
         this.dragState = null;
 
         if (wasDragged) {

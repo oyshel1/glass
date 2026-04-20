@@ -44,16 +44,19 @@ const PROVIDERS = {
       handler: () => require("./providers/gemini"),
       llmModels: [
           { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+          { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
       ],
       sttModels: [
-          { id: 'gemini-live-2.5-flash-preview', name: 'Gemini Live 2.5 Flash' }
+          { id: 'gemini-2.0-flash-live-001', name: 'Gemini Live 2.0 Flash' }
       ],
   },
   'anthropic': {
       name: 'Anthropic',
       handler: () => require("./providers/anthropic"),
       llmModels: [
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+          { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+          { id: 'claude-opus-4-7', name: 'Claude Opus 4.7' },
+          { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
       ],
       sttModels: [],
   },

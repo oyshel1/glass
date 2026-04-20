@@ -5,6 +5,7 @@ const encryptionService = require('./encryptionService');
 const providerSettingsRepository = require('../repositories/providerSettings');
 const authService = require('./authService');
 const ollamaModelRepository = require('../repositories/ollamaModel');
+const ollamaService = require('./ollamaService');
 
 class ModelStateService extends EventEmitter {
     constructor() {
@@ -289,8 +290,11 @@ class ModelStateService extends EventEmitter {
             }
         }
         if (type === 'llm') {
+            // Check DB first, then fall back to all known ollama models (any name not in PROVIDERS is ollama)
             const installedModels = ollamaModelRepository.getInstalledModels();
             if (installedModels.some(m => m.name === modelId)) return 'ollama';
+            // If ollama provider has a key configured, treat any unknown LLM model as ollama
+            // (handles models not yet synced to DB)
         }
         return null;
     }
@@ -304,7 +308,19 @@ class ModelStateService extends EventEmitter {
     }
     
     async setSelectedModel(type, modelId) {
-        const provider = this.getProviderForModel(modelId, type);
+        let provider = this.getProviderForModel(modelId, type);
+        if (!provider && type === 'llm') {
+            // DB may not be synced yet — check live Ollama service
+            try {
+                const liveModels = await ollamaService.getInstalledModels();
+                if (liveModels.some(m => m.name === modelId)) {
+                    provider = 'ollama';
+                    // Write to DB so future sync-less lookups work
+                    const m = liveModels.find(m => m.name === modelId);
+                    ollamaModelRepository.upsertModel({ name: modelId, size: m.size || 0, installed: true });
+                }
+            } catch {}
+        }
         if (!provider) {
             console.warn(`[ModelStateService] No provider found for model ${modelId}`);
             return false;
@@ -343,8 +359,20 @@ class ModelStateService extends EventEmitter {
 
             const providerId = setting.provider;
             if (providerId === 'ollama' && type === 'llm') {
-                const installed = ollamaModelRepository.getInstalledModels();
-                available.push(...installed.map(m => ({ id: m.name, name: m.name })));
+                // Query the live Ollama API so models appear immediately without waiting for DB sync
+                try {
+                    const liveModels = await ollamaService.getInstalledModels();
+                    if (liveModels.length > 0) {
+                        available.push(...liveModels.map(m => ({ id: m.name, name: m.name })));
+                    } else {
+                        // Fallback to DB if service isn't responding
+                        const dbModels = ollamaModelRepository.getInstalledModels();
+                        available.push(...dbModels.map(m => ({ id: m.name, name: m.name })));
+                    }
+                } catch {
+                    const dbModels = ollamaModelRepository.getInstalledModels();
+                    available.push(...dbModels.map(m => ({ id: m.name, name: m.name })));
+                }
             } else if (PROVIDERS[providerId]?.[modelListKey]) {
                 available.push(...PROVIDERS[providerId][modelListKey]);
             }

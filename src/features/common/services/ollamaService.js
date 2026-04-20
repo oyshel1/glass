@@ -124,6 +124,25 @@ class OllamaService extends EventEmitter {
         return 'ollama';
     }
 
+    // Returns the first working ollama binary path (handles Homebrew + app installs)
+    async findOllamaBinary() {
+        const candidates = [
+            '/Applications/Ollama.app/Contents/Resources/ollama',
+            '/opt/homebrew/bin/ollama',
+            '/usr/local/bin/ollama',
+            '/usr/bin/ollama',
+        ];
+        for (const p of candidates) {
+            try {
+                await fs.access(p, require('fs').constants.X_OK);
+                return p;
+            } catch {}
+        }
+        // Last resort: try PATH (may not include Homebrew in GUI context)
+        const inPath = await this.checkCommand('ollama');
+        return inPath || null;
+    }
+
     // === 런타임 관리 (단순화) ===
     async makeRequest(endpoint, options = {}) {
         // 서비스 종료 중이면 요청하지 않음
@@ -152,20 +171,8 @@ class OllamaService extends EventEmitter {
 
     async isInstalled() {
         try {
-            const platform = this.getPlatform();
-            
-            if (platform === 'darwin') {
-                try {
-                    await fs.access('/Applications/Ollama.app');
-                    return true;
-                } catch {
-                    const ollamaPath = await this.checkCommand(this.getOllamaCliPath());
-                    return !!ollamaPath;
-                }
-            } else {
-                const ollamaPath = await this.checkCommand(this.getOllamaCliPath());
-                return !!ollamaPath;
-            }
+            const binary = await this.findOllamaBinary();
+            return !!binary;
         } catch (error) {
             console.log('[OllamaService] Ollama not found:', error.message);
             return false;
@@ -190,9 +197,9 @@ class OllamaService extends EventEmitter {
     async startService() {
         // 서비스 시작 시 종료 플래그 리셋
         this.isShuttingDown = false;
-        
+
         const platform = this.getPlatform();
-        
+
         try {
             if (platform === 'darwin') {
                 try {
@@ -200,7 +207,9 @@ class OllamaService extends EventEmitter {
                     await this.waitForService(() => this.isServiceRunning());
                     return true;
                 } catch {
-                    spawn(this.getOllamaCliPath(), ['serve'], {
+                    // open -a Ollama failed (not installed as .app), find the CLI binary
+                    const ollamaCmd = await this.findOllamaBinary() || this.getOllamaCliPath();
+                    spawn(ollamaCmd, ['serve'], {
                         detached: true,
                         stdio: 'ignore'
                     }).unref();
@@ -353,7 +362,8 @@ class OllamaService extends EventEmitter {
 
     async getInstalledModelsList() {
         try {
-            const { stdout } = await spawnAsync(this.getOllamaCliPath(), ['list']);
+            const ollamaCmd = await this.findOllamaBinary() || this.getOllamaCliPath();
+            const { stdout } = await spawnAsync(ollamaCmd, ['list']);
             const lines = stdout.split('\n').filter(line => line.trim());
             
             // Skip header line (NAME, ID, SIZE, MODIFIED)
