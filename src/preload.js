@@ -190,6 +190,16 @@ contextBridge.exposeInMainWorld('api', {
     removeOnSttUpdate: (callback) => ipcRenderer.removeListener('stt-update', callback)
   },
 
+  // src/ui/listen/liveqa/LiveQAView.js
+  liveQAView: {
+    onLiveQAUpdate: (callback) => {
+      ipcRenderer.removeAllListeners('live-qa-update');
+      ipcRenderer.on('live-qa-update', callback);
+    },
+    removeLiveQAUpdateListeners: () => ipcRenderer.removeAllListeners('live-qa-update'),
+    navigate: (direction) => ipcRenderer.invoke('live-qa:navigate', direction),
+  },
+
   // src/ui/listen/summary/SummaryView.js
   summaryView: {
     // Message Handling

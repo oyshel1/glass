@@ -46,6 +46,9 @@ let systemAudioProcessor = null;
 let systemAudioBuffer = [];
 const MAX_SYSTEM_BUFFER_SIZE = 10;
 
+let micMuted = false;
+function setMicMuted(val) { micMuted = val; }
+
 // ---------------------------
 // Utility helpers (exact from renderer.js)
 // ---------------------------
@@ -304,11 +307,10 @@ async function setupMicProcessing(micStream) {
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
 
     micProcessor.onaudioprocess = (e) => {
+        if (micMuted) return;
         const inputData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(...inputData);
-        // console.log('🎤 micProcessor.onaudioprocess');
 
-        // samplesPerChunk(=2400) 만큼 모이면 전송
         while (audioBuffer.length >= samplesPerChunk) {
             let chunk = audioBuffer.splice(0, samplesPerChunk);
             let processedChunk = new Float32Array(chunk); // 기본값
@@ -352,10 +354,10 @@ function setupLinuxMicProcessing(micStream) {
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
 
     micProcessor.onaudioprocess = async e => {
+        if (micMuted) return;
         const inputData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(...inputData);
 
-        // Process audio in chunks
         while (audioBuffer.length >= samplesPerChunk) {
             const chunk = audioBuffer.splice(0, samplesPerChunk);
             const pcmData16 = convertFloat32ToInt16(chunk);
@@ -614,11 +616,12 @@ function stopCapture() {
 // Exports & global registration
 // ---------------------------
 module.exports = {
-    getAec,          // 새로 만든 초기화 함수
-    runAecSync,      // sync 버전
-    disposeAec,      // 필요시 Rust 객체 파괴
+    getAec,
+    runAecSync,
+    disposeAec,
     startCapture,
     stopCapture,
+    setMicMuted,
     isLinux,
     isMacOS,
 };

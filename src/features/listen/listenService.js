@@ -1,6 +1,7 @@
 const { BrowserWindow } = require('electron');
 const SttService = require('./stt/sttService');
 const SummaryService = require('./summary/summaryService');
+const LiveQAService = require('./liveqa/liveQAService');
 const authService = require('../common/services/authService');
 const sessionRepository = require('../common/repositories/session');
 const sttRepository = require('./stt/repositories');
@@ -11,6 +12,7 @@ class ListenService {
     constructor() {
         this.sttService = new SttService();
         this.summaryService = new SummaryService();
+        this.liveQAService = new LiveQAService();
         this.currentSessionId = null;
         this.isInitializingSession = false;
 
@@ -99,12 +101,19 @@ class ListenService {
 
     async handleTranscriptionComplete(speaker, text) {
         console.log(`[ListenService] Transcription complete: ${speaker} - ${text}`);
-        
+
         // Save to database
         await this.saveConversationTurn(speaker, text);
-        
-        // Add to summary service for analysis
+
+        // Add to summary service (meeting mode — all speakers)
         this.summaryService.addConversationTurn(speaker, text);
+
+        // Live QA — only route "Them" to trigger answers, "Me" to track my responses
+        if (speaker === 'Them') {
+            this.liveQAService.addTheirTurn(text);
+        } else {
+            this.liveQAService.addMyTurn(text);
+        }
     }
 
     async saveConversationTurn(speaker, transcription) {
@@ -145,6 +154,7 @@ class ListenService {
             
             // Reset conversation history
             this.summaryService.resetConversationHistory();
+            this.liveQAService.reset();
 
             console.log('New conversation session started:', this.currentSessionId);
             return true;
@@ -254,6 +264,7 @@ class ListenService {
             // Reset state
             this.currentSessionId = null;
             this.summaryService.resetConversationHistory();
+            this.liveQAService.reset();
 
             console.log('Listen service session closed.');
             return { success: true };

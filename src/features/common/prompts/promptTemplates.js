@@ -95,8 +95,6 @@ Maximum 5 items per section. Keep topics ≤10 words, questions ≤15 words.`,
 - Автоматизація: Selenium WebDriver, Cypress, pytest, Page Object Model
 - Метрики: test coverage, defect density, pass/fail rate`,
 
-`,
-
         outputInstructions: `ПРАВИЛА ВІДПОВІДІ:
 - Відповідай ТІЛЬКИ УКРАЇНСЬКОЮ мовою
 - Відповідай від першої особи як кандидат ("Я вважаю...", "На практиці я використовував...")
