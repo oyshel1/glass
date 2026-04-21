@@ -80,7 +80,8 @@ module.exports = {
 
     // Ask
     ipcMain.handle('ask:sendQuestionFromAsk', async (event, userPrompt) => await askService.sendMessage(userPrompt));
-    ipcMain.handle('ask:sendQuestionFromSummary', async (event, userPrompt) => await askService.sendMessage(userPrompt));
+    ipcMain.handle('ask:sendQuestionFromSummary', async (event, userPrompt) => await askService.sendMessage(userPrompt, [], { withScreenshot: true }));
+    ipcMain.handle('ask:sendQuestionNoScreenshot', async (event, userPrompt) => await askService.sendMessage(userPrompt, [], { withScreenshot: false }));
     ipcMain.handle('ask:toggleAskButton', async () => await askService.toggleAskButton());
     ipcMain.handle('ask:closeAskWindow',  async () => await askService.closeAskWindow());
     

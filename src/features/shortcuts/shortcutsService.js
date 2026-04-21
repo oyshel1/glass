@@ -2,6 +2,7 @@ const { globalShortcut, screen } = require('electron');
 const shortcutsRepository = require('./repositories');
 const internalBridge = require('../../bridge/internalBridge');
 const askService = require('../ask/askService');
+const getListenService = () => require('../listen/listenService');
 
 
 class ShortcutsService {
@@ -171,7 +172,14 @@ class ShortcutsService {
         // --- Hardcoded shortcuts ---
         const isMac = process.platform === 'darwin';
         const modifier = isMac ? 'Cmd' : 'Ctrl';
-        
+
+        // Toggle listen session (Cmd+/)
+        globalShortcut.register(`${modifier}+/`, async () => {
+            const listenService = getListenService();
+            const isActive = await listenService.isSessionActive();
+            await listenService.handleListenRequest(isActive ? 'Stop' : 'Listen');
+        });
+
         // Monitor switching
         const displays = screen.getAllDisplays();
         if (displays.length > 1) {

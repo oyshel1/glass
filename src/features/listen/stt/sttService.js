@@ -5,6 +5,30 @@ const modelStateService = require('../../common/services/modelStateService');
 
 const COMPLETION_DEBOUNCE_MS = 2000;
 
+const WHISPER_NOISE_PATTERNS = [
+    '[BLANK_AUDIO]', '(BLANK_AUDIO)',
+    '[INAUDIBLE]', '(INAUDIBLE)',
+    '[MUSIC]', '(MUSIC)',
+    '[SOUND]', '(SOUND)',
+    '[NOISE]', '(NOISE)',
+    '[Speaking Ukrainian]', '(Speaking Ukrainian)',
+    '[Speaking Russian]', '(Speaking Russian)',
+    '[Speaking English]', '(Speaking English)',
+    '[Applause]', '(Applause)',
+    '[Laughter]', '(Laughter)',
+    '[Music]', '[Background Music]',
+    '*', // whisper italic noise markers like *gibberish*
+];
+
+function isWhisperNoise(text) {
+    if (!text || text.length <= 2) return true;
+    const lower = text.toLowerCase();
+    if (WHISPER_NOISE_PATTERNS.some(p => text.includes(p))) return true;
+    // Catch whisper hallucination italic markers like *something*
+    if (/^\*[^*]+\*$/.test(text.trim())) return true;
+    return false;
+}
+
 // ── New heartbeat / renewal constants ────────────────────────────────────────────
 // Interval to send low-cost keep-alive messages so the remote service does not
 // treat the connection as idle. One minute is safely below the typical 2-5 min
@@ -44,7 +68,11 @@ class SttService {
         this.onTranscriptionComplete = null;
         this.onStatusUpdate = null;
 
-        this.modelInfo = null; 
+        this.modelInfo = null;
+
+        // Fallback tracking
+        this._sttErrorCount = 0;
+        this._fallbackActive = false;
     }
 
     setCallbacks({ onTranscriptionComplete, onStatusUpdate }) {
@@ -152,12 +180,17 @@ class SttService {
     async initializeSttSessions(language = 'en') {
         const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG || language || 'en';
 
-        const modelInfo = await modelStateService.getCurrentModelInfo('stt');
-        if (!modelInfo || !modelInfo.apiKey) {
-            throw new Error('AI model or API key is not configured.');
+        // Only fetch from DB if not already overridden (e.g. by fallback)
+        if (!this.modelInfo || this.modelInfo.provider !== 'whisper') {
+            const modelInfo = await modelStateService.getCurrentModelInfo('stt');
+            if (!modelInfo || !modelInfo.apiKey) {
+                throw new Error('AI model or API key is not configured.');
+            }
+            this.modelInfo = modelInfo;
         }
-        this.modelInfo = modelInfo;
-        console.log(`[SttService] Initializing STT for ${modelInfo.provider} using model ${modelInfo.model}`);
+        this._sttErrorCount = 0;
+        this._fallbackActive = false;
+        console.log(`[SttService] Initializing STT for ${this.modelInfo.provider} using model ${this.modelInfo.model}`);
 
         const handleMyMessage = message => {
             if (!this.modelInfo) {
@@ -166,33 +199,11 @@ class SttService {
             }
             // console.log('[SttService] handleMyMessage', message);
             
-            if (this.modelInfo.provider === 'whisper') {
-                // Whisper STT emits 'transcription' events with different structure
+            if (this.modelInfo.provider === 'whisper' || this.modelInfo.provider === 'groq') {
                 if (message.text && message.text.trim()) {
                     const finalText = message.text.trim();
-                    
-                    // Filter out Whisper noise transcriptions
-                    const noisePatterns = [
-                        '[BLANK_AUDIO]',
-                        '[INAUDIBLE]',
-                        '[MUSIC]',
-                        '[SOUND]',
-                        '[NOISE]',
-                        '(BLANK_AUDIO)',
-                        '(INAUDIBLE)',
-                        '(MUSIC)',
-                        '(SOUND)',
-                        '(NOISE)'
-                    ];
-                    
-                    const isNoise = noisePatterns.some(pattern => 
-                        finalText.includes(pattern) || finalText === pattern
-                    );
-                    
-                    
-                    if (!isNoise && finalText.length > 2) {
+                    if (!isWhisperNoise(finalText)) {
                         this.debounceMyCompletion(finalText);
-                        
                         this.sendToRenderer('stt-update', {
                             speaker: 'Me',
                             text: finalText,
@@ -201,7 +212,7 @@ class SttService {
                             timestamp: Date.now(),
                         });
                     } else {
-                        console.log(`[Whisper-Me] Filtered noise: "${finalText}"`);
+                        console.log(`[${this.modelInfo.provider}-Me] Filtered noise: "${finalText}"`);
                     }
                 }
                 return;
@@ -307,34 +318,11 @@ class SttService {
                 return;
             }
             
-            if (this.modelInfo.provider === 'whisper') {
-                // Whisper STT emits 'transcription' events with different structure
+            if (this.modelInfo.provider === 'whisper' || this.modelInfo.provider === 'groq') {
                 if (message.text && message.text.trim()) {
                     const finalText = message.text.trim();
-                    
-                    // Filter out Whisper noise transcriptions
-                    const noisePatterns = [
-                        '[BLANK_AUDIO]',
-                        '[INAUDIBLE]',
-                        '[MUSIC]',
-                        '[SOUND]',
-                        '[NOISE]',
-                        '(BLANK_AUDIO)',
-                        '(INAUDIBLE)',
-                        '(MUSIC)',
-                        '(SOUND)',
-                        '(NOISE)'
-                    ];
-                    
-                    const isNoise = noisePatterns.some(pattern => 
-                        finalText.includes(pattern) || finalText === pattern
-                    );
-                    
-                    
-                    // Only process if it's not noise, not a false positive, and has meaningful content
-                    if (!isNoise && finalText.length > 2) {
+                    if (!isWhisperNoise(finalText)) {
                         this.debounceTheirCompletion(finalText);
-                        
                         this.sendToRenderer('stt-update', {
                             speaker: 'Them',
                             text: finalText,
@@ -343,7 +331,7 @@ class SttService {
                             timestamp: Date.now(),
                         });
                     } else {
-                        console.log(`[Whisper-Them] Filtered noise: "${finalText}"`);
+                        console.log(`[${this.modelInfo.provider}-Them] Filtered noise: "${finalText}"`);
                     }
                 }
                 return;
@@ -439,23 +427,24 @@ class SttService {
         const mySttConfig = {
             language: effectiveLanguage,
             callbacks: {
-                onmessage: handleMyMessage,
-                onerror: error => console.error('My STT session error:', error.message),
+                onmessage: (msg) => { this._sttErrorCount = 0; handleMyMessage(msg); },
+                onerror: error => this._handleSttError(error),
                 onclose: event => console.log('My STT session closed:', event.reason),
             },
         };
-        
+
         const theirSttConfig = {
             language: effectiveLanguage,
             callbacks: {
-                onmessage: handleTheirMessage,
-                onerror: error => console.error('Their STT session error:', error.message),
+                onmessage: (msg) => { this._sttErrorCount = 0; handleTheirMessage(msg); },
+                onerror: error => this._handleSttError(error),
                 onclose: event => console.log('Their STT session closed:', event.reason),
             },
         };
         
         const sttOptions = {
             apiKey: this.modelInfo.apiKey,
+            model: this.modelInfo.model,
             language: effectiveLanguage,
             usePortkey: this.modelInfo.provider === 'openai-glass',
             portkeyVirtualKey: this.modelInfo.provider === 'openai-glass' ? this.modelInfo.apiKey : undefined,
@@ -739,6 +728,73 @@ class SttService {
         }
     }
 
+    _handleSttError(error) {
+        console.error('[SttService] STT error:', error.message);
+        this._sttErrorCount++;
+        const provider = this.modelInfo?.provider;
+        if (this._sttErrorCount >= 3 && provider !== 'whisper' && !this._fallbackActive) {
+            console.warn(`[SttService] ${this._sttErrorCount} consecutive errors from "${provider}", switching to local Whisper…`);
+            this._fallbackToWhisper();
+        }
+    }
+
+    async _fallbackToWhisper() {
+        if (this._fallbackActive) return;
+        this._fallbackActive = true;
+
+        if (this.onStatusUpdate) this.onStatusUpdate('⚠️ STT error — switching to local Whisper…');
+        this.sendToRenderer('stt-update', {
+            speaker: 'Me',
+            text: '⚠️ Groq STT недоступний — переключаюсь на локальний Whisper…',
+            isPartial: false,
+            isFinal: true,
+            timestamp: Date.now(),
+        });
+
+        try {
+            const whisperService = require('../../common/services/whisperService');
+            const installed = await whisperService.handleGetInstalledModels();
+            const preferredOrder = ['whisper-medium', 'whisper-small', 'whisper-base', 'whisper-tiny'];
+            const bestModel = preferredOrder.find(m => installed?.some?.(i => i.id === m || i === m))
+                || (installed?.length > 0 ? (installed[0].id || installed[0]) : null);
+
+            if (!bestModel) {
+                console.error('[SttService] No local Whisper models installed, cannot fallback.');
+                if (this.onStatusUpdate) this.onStatusUpdate('❌ Немає локального Whisper — зупинка');
+                return;
+            }
+
+            console.log(`[SttService] Falling back to Whisper model: ${bestModel}`);
+
+            // Close current sessions without touching audio capture
+            if (this.keepAliveInterval) { clearInterval(this.keepAliveInterval); this.keepAliveInterval = null; }
+            if (this.sessionRenewTimeout) { clearTimeout(this.sessionRenewTimeout); this.sessionRenewTimeout = null; }
+            try { this.mySttSession?.close?.(); } catch {}
+            try { this.theirSttSession?.close?.(); } catch {}
+            this.mySttSession = null;
+            this.theirSttSession = null;
+
+            // Override modelInfo to whisper
+            this.modelInfo = { provider: 'whisper', model: bestModel, apiKey: null };
+            this._sttErrorCount = 0;
+
+            const currentLanguage = this.modelInfo?.language || 'uk';
+            await this.initializeSttSessions(currentLanguage);
+
+            if (this.onStatusUpdate) this.onStatusUpdate(`✅ Whisper (${bestModel}) активний`);
+            this.sendToRenderer('stt-update', {
+                speaker: 'Me',
+                text: `✅ Переключено на локальний Whisper (${bestModel})`,
+                isPartial: false,
+                isFinal: true,
+                timestamp: Date.now(),
+            });
+        } catch (err) {
+            console.error('[SttService] Fallback to Whisper failed:', err.message);
+            this._fallbackActive = false;
+        }
+    }
+
     isSessionActive() {
         return !!this.mySttSession && !!this.theirSttSession;
     }
@@ -784,7 +840,9 @@ class SttService {
         this.theirCurrentUtterance = '';
         this.myCompletionBuffer = '';
         this.theirCompletionBuffer = '';
-        this.modelInfo = null; 
+        this.modelInfo = null;
+        this._sttErrorCount = 0;
+        this._fallbackActive = false;
     }
 }
 

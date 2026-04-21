@@ -5,6 +5,7 @@ const authService = require('../common/services/authService');
 const sessionRepository = require('../common/repositories/session');
 const sttRepository = require('./stt/repositories');
 const internalBridge = require('../../bridge/internalBridge');
+const settingsService = require('../settings/settingsService');
 
 class ListenService {
     constructor() {
@@ -154,7 +155,15 @@ class ListenService {
         }
     }
 
-    async initializeSession(language = 'en') {
+    async initializeSession(language = null) {
+        if (!language) {
+            try {
+                const settings = await settingsService.getSettings();
+                language = settings.language || 'uk';
+            } catch (e) {
+                language = 'uk';
+            }
+        }
         if (this.isInitializingSession) {
             console.log('Session initialization already in progress.');
             return false;

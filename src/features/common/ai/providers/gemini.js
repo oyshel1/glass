@@ -34,24 +34,29 @@ class GeminiProvider {
  * @param {object} [opts.callbacks] - Event callbacks
  * @returns {Promise<object>} STT session
  */
+// BCP-47 language code map for common languages without region suffix
+const LANG_REGION_MAP = {
+  'uk': 'uk-UA',
+  'ru': 'ru-RU',
+  'en': 'en-US',
+  'de': 'de-DE',
+  'fr': 'fr-FR',
+  'es': 'es-ES',
+  'pl': 'pl-PL',
+};
+
 async function createSTT({ apiKey, language = "en-US", callbacks = {}, ...config }) {
   const liveClient = new GoogleGenAI({ vertexai: false, apiKey })
 
-  // Language code BCP-47 conversion
-  const lang = language.includes("-") ? language : `${language}-US`
+  // BCP-47 language code — map short codes to full regional variants
+  const lang = language.includes("-") ? language : (LANG_REGION_MAP[language] || `${language}-US`);
+  console.log(`[Gemini STT] Using language: ${lang} (input: ${language})`);
 
   const session = await liveClient.live.connect({
-
-    model: 'gemini-2.0-flash-live-001',
+    model: 'gemini-2.0-flash-live-preview-04-09',
     callbacks: {
       ...callbacks,
-      onMessage: (msg) => {
-        if (!msg || typeof msg !== 'object') return;
-        msg.provider = 'gemini';
-        callbacks.onmessage?.(msg);
-      }
     },
-
     config: {
       inputAudioTranscription: {},
       speechConfig: { languageCode: lang },

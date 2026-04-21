@@ -113,25 +113,27 @@ Please build upon this context while analyzing the new conversation segments.
                     role: 'user',
                     content: `${contextualPrompt}
 
-Analyze the conversation and provide a structured summary. Format your response as follows:
+ВАЖЛИВО: Надавай відповідь УКРАЇНСЬКОЮ мовою. Всі питання, висновки та пояснення мають бути українською.
 
-**Summary Overview**
-- Main discussion point with context
+Проаналізуй розмову та надай структурований підсумок у наступному форматі:
 
-**Key Topic: [Topic Name]**
-- First key insight
-- Second key insight
-- Third key insight
+**Огляд розмови**
+- Головна тема з контекстом
 
-**Extended Explanation**
-Provide 2-3 sentences explaining the context and implications.
+**Ключова тема: [Назва теми]**
+- Перший ключовий висновок
+- Другий ключовий висновок
+- Третій ключовий висновок
 
-**Suggested Questions**
-1. First follow-up question?
-2. Second follow-up question?
-3. Third follow-up question?
+**Розширене пояснення**
+2-3 речення з поясненням контексту та наслідків.
 
-Keep all points concise and build upon previous analysis if provided.`,
+**Рекомендовані питання**
+1. Перше уточнюючe питання?
+2. Друге уточнююче питання?
+3. Третє уточнююче питання?
+
+Стисло та по суті, спирайся на попередній аналіз якщо він є.`,
                 },
             ];
 

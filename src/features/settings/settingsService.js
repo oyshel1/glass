@@ -203,7 +203,7 @@ function getDefaultSettings() {
     const isMac = process.platform === 'darwin';
     return {
         profile: 'school',
-        language: 'en',
+        language: 'uk',
         screenshotInterval: '5000',
         imageQuality: '0.8',
         layoutMode: 'stacked',

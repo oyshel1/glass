@@ -182,8 +182,11 @@ contextBridge.exposeInMainWorld('api', {
 
   // src/ui/listen/stt/SttView.js
   sttView: {
-    // Listeners
-    onSttUpdate: (callback) => ipcRenderer.on('stt-update', callback),
+    // Listeners — removeAllListeners before adding to prevent duplicate stacking
+    onSttUpdate: (callback) => {
+      ipcRenderer.removeAllListeners('stt-update');
+      ipcRenderer.on('stt-update', callback);
+    },
     removeOnSttUpdate: (callback) => ipcRenderer.removeListener('stt-update', callback)
   },
 
@@ -191,6 +194,7 @@ contextBridge.exposeInMainWorld('api', {
   summaryView: {
     // Message Handling
     sendQuestionFromSummary: (text) => ipcRenderer.invoke('ask:sendQuestionFromSummary', text),
+    sendQuestionNoScreenshot: (text) => ipcRenderer.invoke('ask:sendQuestionNoScreenshot', text),
     
     // Listeners
     onSummaryUpdate: (callback) => ipcRenderer.on('summary-update', callback),

@@ -50,11 +50,29 @@ class WhisperSTTSession extends EventEmitter {
         }, 1500);
     }
 
+    hasEnoughEnergy(audioData) {
+        // Each sample is 16-bit signed PCM = 2 bytes
+        const samples = audioData.length / 2;
+        let sum = 0;
+        for (let i = 0; i < audioData.length - 1; i += 2) {
+            const sample = audioData.readInt16LE(i);
+            sum += sample * sample;
+        }
+        const rms = Math.sqrt(sum / samples);
+        // RMS threshold: ~300 out of 32768 max — filters silence/background noise
+        return rms > 300;
+    }
+
     async processAudioChunk() {
         if (!this.isRunning || this.audioBuffer.length === 0) return;
 
         const audioData = this.audioBuffer;
         this.audioBuffer = Buffer.alloc(0);
+
+        if (!this.hasEnoughEnergy(audioData)) {
+            console.log(`[WhisperSTT-${this.sessionId}] Skipping silent chunk (low energy)`);
+            return;
+        }
 
         try {
             const tempFile = await this.whisperService.saveAudioToTemp(audioData, this.sessionId);

@@ -1064,8 +1064,11 @@ export class AskView extends LitElement {
                 });
             }
 
-            // 스크롤을 맨 아래로
-            responseContainer.scrollTop = responseContainer.scrollHeight;
+            // Only auto-scroll if user is already near the bottom (within 120px)
+            const distFromBottom = responseContainer.scrollHeight - responseContainer.scrollTop - responseContainer.clientHeight;
+            if (distFromBottom < 120) {
+                responseContainer.scrollTop = responseContainer.scrollHeight;
+            }
             
         } catch (error) {
             console.error('Error rendering streaming markdown:', error);

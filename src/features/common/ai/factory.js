@@ -22,10 +22,14 @@ const PROVIDERS = {
       name: 'OpenAI',
       handler: () => require("./providers/openai"),
       llmModels: [
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (fast)' },
+          { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+          { id: 'gpt-4o', name: 'GPT-4o' },
           { id: 'gpt-4.1', name: 'GPT-4.1' },
       ],
       sttModels: [
-          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' }
+          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' },
+          { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe' },
       ],
   },
 
@@ -47,7 +51,7 @@ const PROVIDERS = {
           { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
       ],
       sttModels: [
-          { id: 'gemini-2.0-flash-live-001', name: 'Gemini Live 2.0 Flash' }
+          { id: 'gemini-2.0-flash-live-preview-04-09', name: 'Gemini Live 2.0 Flash' }
       ],
   },
   'anthropic': {
@@ -59,6 +63,22 @@ const PROVIDERS = {
           { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
       ],
       sttModels: [],
+  },
+  'groq': {
+      name: 'Groq',
+      handler: () => require("./providers/groq"),
+      llmModels: [
+          { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision 👁' },
+          { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision 👁 (fast)' },
+          { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (text only)' },
+          { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (fastest, text only)' },
+          { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B (text only)' },
+      ],
+      sttModels: [
+          { id: 'whisper-large-v3-turbo', name: 'Whisper Large v3 Turbo (fast)' },
+          { id: 'whisper-large-v3', name: 'Whisper Large v3' },
+          { id: 'distil-whisper-large-v3-en', name: 'Distil Whisper v3 (EN only)' },
+      ],
   },
   'deepgram': {
     name: 'Deepgram',
@@ -161,7 +181,8 @@ function getProviderClass(providerId) {
         'gemini': 'GeminiProvider',
         'deepgram': 'DeepgramProvider',
         'ollama': 'OllamaProvider',
-        'whisper': 'WhisperProvider'
+        'whisper': 'WhisperProvider',
+        'groq': 'GroqProvider',
     };
     
     const className = classNameMap[actualProviderId];

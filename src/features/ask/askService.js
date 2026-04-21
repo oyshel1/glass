@@ -215,7 +215,7 @@ class AskService {
      * @param {string} userPrompt
      * @returns {Promise<{success: boolean, response?: string, error?: string}>}
      */
-    async sendMessage(userPrompt, conversationHistoryRaw=[]) {
+    async sendMessage(userPrompt, conversationHistoryRaw=[], { withScreenshot = true } = {}) {
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -249,12 +249,12 @@ class AskService {
             }
             console.log(`[AskService] Using model: ${modelInfo.model} for provider: ${modelInfo.provider}`);
 
-            const screenshotResult = await captureScreenshot({ quality: 'medium' });
+            const screenshotResult = withScreenshot ? await captureScreenshot({ quality: 'medium' }) : { success: false };
             const screenshotBase64 = screenshotResult.success ? screenshotResult.base64 : null;
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
 
-            const systemPrompt = getSystemPrompt('pickle_glass_analysis', conversationHistory, false);
+            const systemPrompt = getSystemPrompt('pickle_glass', conversationHistory, false);
 
             const messages = [
                 { role: 'system', content: systemPrompt },

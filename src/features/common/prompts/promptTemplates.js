@@ -40,7 +40,7 @@ Maximum 5 items per section. Keep topics ≤10 words, questions ≤15 words.`,
     },
 
     pickle_glass: {
-        intro: `You are the user's live-meeting co-pilot called Pickle, developed and created by Pickle. Prioritize only the most recent context.`,
+        intro: `You are the user's live-meeting co-pilot called Pickle, developed and created by Pickle. Prioritize only the most recent context. ВАЖЛИВО: Відповідай ВИКЛЮЧНО УКРАЇНСЬКОЮ мовою. The user is preparing for a QA Engineer job interview (DB QA, SQL, Big Data). Provide detailed, expert-level answers to QA and software testing questions.`,
 
         formatRequirements: `<decision_hierarchy>
 Execute in order—use the first that applies:

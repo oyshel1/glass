@@ -71,7 +71,7 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
         session: {
           input_audio_format: 'pcm16',
           input_audio_transcription: {
-            model: 'gpt-4o-mini-transcribe',
+            model: config.model || 'gpt-4o-mini-transcribe',
             prompt: config.prompt || '',
             language: language || 'en'
           },
