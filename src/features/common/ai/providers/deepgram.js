@@ -38,12 +38,13 @@ class DeepgramProvider {
 
 function createSTT({
     apiKey,
+    model = 'nova-3',
     language = 'en-US',
     sampleRate = 24000,
     callbacks = {},
   }) {
     const qs = new URLSearchParams({
-      model: 'nova-3',
+      model,
       encoding: 'linear16',
       sample_rate: sampleRate.toString(),
       language,

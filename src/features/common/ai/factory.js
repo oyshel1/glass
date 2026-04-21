@@ -22,14 +22,13 @@ const PROVIDERS = {
       name: 'OpenAI',
       handler: () => require("./providers/openai"),
       llmModels: [
-          { id: 'gpt-4o-mini', name: 'GPT-4o Mini (fast)' },
-          { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
-          { id: 'gpt-4o', name: 'GPT-4o' },
-          { id: 'gpt-4.1', name: 'GPT-4.1' },
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano 👁 ($0.10/1M — cheapest vision)' },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini 👁 ($0.15/1M — best value)' },
+          { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini 👁 ($0.40/1M)' },
       ],
       sttModels: [
-          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' },
-          { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe' },
+          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe ($0.003/min)' },
+          { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe ($0.006/min)' },
       ],
   },
 
@@ -37,11 +36,9 @@ const PROVIDERS = {
       name: 'OpenAI (Glass)',
       handler: () => require("./providers/openai"),
       llmModels: [
-          { id: 'gpt-4.1-glass', name: 'GPT-4.1 (glass)' },
+          { id: 'gpt-4.1-mini-glass', name: 'GPT-4.1 Mini (glass)' },
       ],
-      sttModels: [
-          { id: 'gpt-4o-mini-transcribe-glass', name: 'GPT-4o Mini Transcribe (glass)' }
-      ],
+      sttModels: [],
   },
   'gemini': {
       name: 'Gemini',
@@ -64,6 +61,25 @@ const PROVIDERS = {
       ],
       sttModels: [],
   },
+  'deepseek': {
+      name: 'DeepSeek',
+      handler: () => require("./providers/deepseek"),
+      llmModels: [
+          { id: 'deepseek-chat', name: 'DeepSeek V3 (cheap, smart)' },
+          { id: 'deepseek-reasoner', name: 'DeepSeek R1 (reasoning)' },
+      ],
+      sttModels: [],
+  },
+  'xai': {
+      name: 'xAI (Grok)',
+      handler: () => require("./providers/xai"),
+      llmModels: [
+          { id: 'grok-3-mini', name: 'Grok 3 Mini (fast, cheap)' },
+          { id: 'grok-3', name: 'Grok 3' },
+          { id: 'grok-2-vision-1212', name: 'Grok 2 Vision 👁' },
+      ],
+      sttModels: [],
+  },
   'groq': {
       name: 'Groq',
       handler: () => require("./providers/groq"),
@@ -81,13 +97,16 @@ const PROVIDERS = {
       ],
   },
   'deepgram': {
-    name: 'Deepgram',
-    handler: () => require("./providers/deepgram"),
-    llmModels: [],
-    sttModels: [
-        { id: 'nova-3', name: 'Nova-3 (General)' },
-        ],
-    },
+      name: 'Deepgram',
+      handler: () => require("./providers/deepgram"),
+      llmModels: [],
+      sttModels: [
+          { id: 'nova-3', name: 'Nova-3 (best quality)' },
+          { id: 'nova-2', name: 'Nova-2 (stable)' },
+          { id: 'nova-3-medical', name: 'Nova-3 Medical' },
+          { id: 'base', name: 'Base (cheapest)' },
+      ],
+  },
   'ollama': {
       name: 'Ollama (Local)',
       handler: () => require("./providers/ollama"),
@@ -183,6 +202,8 @@ function getProviderClass(providerId) {
         'ollama': 'OllamaProvider',
         'whisper': 'WhisperProvider',
         'groq': 'GroqProvider',
+        'deepseek': 'DeepSeekProvider',
+        'xai': 'XAIProvider',
     };
     
     const className = classNameMap[actualProviderId];
