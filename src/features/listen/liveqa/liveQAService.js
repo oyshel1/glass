@@ -8,7 +8,7 @@ class LiveQAService {
         this.myTurnCount = 0;     // my turns since last question
         this.isAnalyzing = false;
         this.debounceTimer = null;
-        this.DEBOUNCE_MS = 500; // STT already batches for 2s; total delay = 2.5s from last word
+        this.DEBOUNCE_MS = 200; // STT already batches; small extra delay before triggering LLM
         this.MY_TURNS_TO_ANSWER = 3;
     }
 

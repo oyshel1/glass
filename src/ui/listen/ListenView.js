@@ -681,7 +681,7 @@ export class ListenView extends LitElement {
     updated(changedProperties) {
         super.updated(changedProperties);
 
-        if (changedProperties.has('viewMode')) {
+        if (changedProperties.has('viewMode') || changedProperties.has('insightsMode')) {
             this.adjustWindowHeight();
         }
     }
@@ -791,6 +791,7 @@ export class ListenView extends LitElement {
 
                 <live-qa-view
                     .isVisible=${this.viewMode === 'insights' && this.insightsMode === 'liveqa'}
+                    @liveqa-updated=${this.handleSttMessagesUpdated}
                 ></live-qa-view>
 
                 <summary-view

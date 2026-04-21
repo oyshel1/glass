@@ -218,6 +218,12 @@ export class SttView extends LitElement {
         else next.add(id);
         this.selectedIds = next;
         this.requestUpdate();
+        this.updateComplete.then(() => {
+            this.dispatchEvent(new CustomEvent('stt-messages-updated', {
+                detail: { messages: this.sttMessages },
+                bubbles: true,
+            }));
+        });
     }
 
     _buildQuery(text) {

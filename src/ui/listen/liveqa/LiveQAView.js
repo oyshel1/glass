@@ -11,7 +11,7 @@ export class LiveQAView extends LitElement {
         .container {
             padding: 10px 16px 16px 16px;
             min-height: 120px;
-            max-height: 560px;
+            max-height: 600px;
             overflow-y: auto;
             box-sizing: border-box;
         }
@@ -245,6 +245,9 @@ export class LiveQAView extends LitElement {
                 this.qaHistory = data.history || [];
                 this.currentIndex = data.currentIndex ?? -1;
                 this.requestUpdate();
+                this.updateComplete.then(() => {
+                    this.dispatchEvent(new CustomEvent('liveqa-updated', { bubbles: true }));
+                });
             });
         }
     }
@@ -277,6 +280,19 @@ export class LiveQAView extends LitElement {
         this._renderedEntryId = null;
         this._renderedEntryComplete = false;
         this.requestUpdate();
+    }
+
+    _truncateQuestion(text) {
+        if (!text) return '';
+        // Split on sentence-ending punctuation; keep first 2 sentences
+        const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g);
+        if (sentences && sentences.length >= 2) {
+            const two = sentences.slice(0, 2).join('').trimEnd();
+            if (two.length < text.trimEnd().length) return two + ' …';
+        }
+        // Fallback: hard truncate at 200 chars
+        if (text.length > 200) return text.slice(0, 200).trimEnd() + ' …';
+        return text;
     }
 
     render() {
@@ -316,7 +332,7 @@ export class LiveQAView extends LitElement {
 
                 <div class="question-box">
                     <span class="q-label">Питання інтерв'юера</span>
-                    <span class="q-text">${entry.questionText}</span>
+                    <span class="q-text">${this._truncateQuestion(entry.questionText)}</span>
                 </div>
 
                 <div class="answer-box">
@@ -357,6 +373,13 @@ export class LiveQAView extends LitElement {
         }
 
         if (!entry.answer) return;
+
+        // If DOM was rebuilt (e.g. tab switch), container is empty — force re-render
+        if (this._renderedEntryComplete && container.children.length === 0) {
+            this._renderedEntryComplete = false;
+            this._smdParser = null;
+            this._smdLastLength = 0;
+        }
         if (this._renderedEntryComplete) return;
 
         // Completed entry (navigated to old answer or just finished) — render full text

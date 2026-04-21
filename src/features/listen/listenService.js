@@ -264,7 +264,7 @@ class ListenService {
             // Reset state
             this.currentSessionId = null;
             this.summaryService.resetConversationHistory();
-            this.liveQAService.reset();
+            // liveQAService is NOT reset here — keep history so user can review after Stop
 
             console.log('Listen service session closed.');
             return { success: true };

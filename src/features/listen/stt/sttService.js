@@ -4,7 +4,7 @@ const { createSTT } = require('../../common/ai/factory');
 const modelStateService = require('../../common/services/modelStateService');
 
 const COMPLETION_DEBOUNCE_MS = 2000;
-const GROQ_WHISPER_DEBOUNCE_MS = 4500; // Groq batches 3s audio chunks + 1-2s API latency = 4-5s between chunks
+const GROQ_WHISPER_DEBOUNCE_MS = 3000; // Groq batches 3s audio chunks + 1-2s API latency = 4-5s between chunks
 
 const WHISPER_NOISE_PATTERNS = [
     '[BLANK_AUDIO]', '(BLANK_AUDIO)',
