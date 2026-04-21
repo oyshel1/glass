@@ -7,7 +7,7 @@ export class ListenView extends LitElement {
     static styles = css`
         :host {
             display: block;
-            width: 400px;
+            width: 440px;
             transform: translate3d(0, 0, 0);
             backface-visibility: hidden;
             transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease-out;

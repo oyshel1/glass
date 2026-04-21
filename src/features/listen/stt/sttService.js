@@ -4,6 +4,7 @@ const { createSTT } = require('../../common/ai/factory');
 const modelStateService = require('../../common/services/modelStateService');
 
 const COMPLETION_DEBOUNCE_MS = 2000;
+const GROQ_WHISPER_DEBOUNCE_MS = 4500; // Groq batches 3s audio chunks + 1-2s API latency = 4-5s between chunks
 
 const WHISPER_NOISE_PATTERNS = [
     '[BLANK_AUDIO]', '(BLANK_AUDIO)',
@@ -163,7 +164,9 @@ class SttService {
         }
 
         if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
-        this.myCompletionTimer = setTimeout(() => this.flushMyCompletion(), COMPLETION_DEBOUNCE_MS);
+        const myDebounce = (this.modelInfo?.provider === 'groq' || this.modelInfo?.provider === 'whisper')
+            ? GROQ_WHISPER_DEBOUNCE_MS : COMPLETION_DEBOUNCE_MS;
+        this.myCompletionTimer = setTimeout(() => this.flushMyCompletion(), myDebounce);
     }
 
     debounceTheirCompletion(text) {
@@ -174,7 +177,9 @@ class SttService {
         }
 
         if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
-        this.theirCompletionTimer = setTimeout(() => this.flushTheirCompletion(), COMPLETION_DEBOUNCE_MS);
+        const theirDebounce = (this.modelInfo?.provider === 'groq' || this.modelInfo?.provider === 'whisper')
+            ? GROQ_WHISPER_DEBOUNCE_MS : COMPLETION_DEBOUNCE_MS;
+        this.theirCompletionTimer = setTimeout(() => this.flushTheirCompletion(), theirDebounce);
     }
 
     async initializeSttSessions(language = 'en') {
@@ -203,12 +208,13 @@ class SttService {
                 if (message.text && message.text.trim()) {
                     const finalText = message.text.trim();
                     if (!isWhisperNoise(finalText)) {
-                        this.debounceMyCompletion(finalText);
+                        this.debounceMyCompletion(finalText); // adds to buffer, resets 2s timer
+                        // Show growing buffer as partial — one bubble that keeps updating
                         this.sendToRenderer('stt-update', {
                             speaker: 'Me',
-                            text: finalText,
-                            isPartial: false,
-                            isFinal: true,
+                            text: this.myCompletionBuffer.trim(),
+                            isPartial: true,
+                            isFinal: false,
                             timestamp: Date.now(),
                         });
                     } else {
@@ -322,12 +328,13 @@ class SttService {
                 if (message.text && message.text.trim()) {
                     const finalText = message.text.trim();
                     if (!isWhisperNoise(finalText)) {
-                        this.debounceTheirCompletion(finalText);
+                        this.debounceTheirCompletion(finalText); // adds to buffer, resets 2s timer
+                        // Show growing buffer as partial — one bubble that keeps updating
                         this.sendToRenderer('stt-update', {
                             speaker: 'Them',
-                            text: finalText,
-                            isPartial: false,
-                            isFinal: true,
+                            text: this.theirCompletionBuffer.trim(),
+                            isPartial: true,
+                            isFinal: false,
                             timestamp: Date.now(),
                         });
                     } else {

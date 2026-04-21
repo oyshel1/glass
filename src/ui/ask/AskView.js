@@ -363,7 +363,6 @@ export class AskView extends LitElement {
         .response-container {
             flex: 1;
             padding: 16px;
-            padding-left: 48px;
             overflow-y: auto;
             font-size: 14px;
             line-height: 1.6;

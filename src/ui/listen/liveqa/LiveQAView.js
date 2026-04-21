@@ -1,4 +1,5 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { parser, parser_write, parser_end, default_renderer } from '../../assets/smd.js';
 
 export class LiveQAView extends LitElement {
     static styles = css`
@@ -8,10 +9,11 @@ export class LiveQAView extends LitElement {
         }
 
         .container {
-            padding: 12px 16px 16px 16px;
+            padding: 10px 16px 16px 16px;
             min-height: 120px;
-            max-height: 580px;
+            max-height: 560px;
             overflow-y: auto;
+            box-sizing: border-box;
         }
 
         .container::-webkit-scrollbar { width: 6px; }
@@ -40,9 +42,9 @@ export class LiveQAView extends LitElement {
             border: none;
             color: rgba(255,255,255,0.8);
             border-radius: 4px;
-            width: 22px;
-            height: 22px;
-            font-size: 14px;
+            width: 24px;
+            height: 24px;
+            font-size: 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -56,11 +58,11 @@ export class LiveQAView extends LitElement {
 
         .counter {
             font-size: 11px;
-            color: rgba(255,255,255,0.6);
-            min-width: 32px;
+            color: rgba(255,255,255,0.55);
+            min-width: 34px;
             text-align: center;
         }
-        .counter.answered { color: rgba(100,220,100,0.8); }
+        .counter.answered { color: rgba(100,220,100,0.75); }
 
         .live-dot {
             width: 7px;
@@ -77,45 +79,48 @@ export class LiveQAView extends LitElement {
 
         .analyzing-label {
             font-size: 10px;
-            color: rgba(255,200,80,0.8);
+            color: rgba(255,200,80,0.85);
             font-style: italic;
         }
 
         .question-box {
             background: rgba(255,255,255,0.06);
-            border-left: 2px solid rgba(255,255,255,0.3);
+            border-left: 2px solid rgba(255,255,255,0.25);
             border-radius: 0 6px 6px 0;
             padding: 7px 10px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .q-label {
-            font-size: 10px;
-            color: rgba(255,255,255,0.45);
+            font-size: 9px;
+            color: rgba(255,255,255,0.4);
             display: block;
             margin-bottom: 3px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
 
         .q-text {
             font-size: 12px;
-            color: rgba(255,255,255,0.75);
+            color: rgba(255,255,255,0.7);
             line-height: 1.4;
             word-wrap: break-word;
         }
 
-        .answer-box {
-            color: #ffffff;
-            font-size: 12px;
-            line-height: 1.5;
+        .answer-content {
+            color: #f0f0f0;
+            font-size: 13px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            user-select: text;
+            cursor: text;
         }
 
         .typing-indicator {
             display: flex;
             gap: 4px;
             align-items: center;
-            padding: 4px 0;
+            padding: 8px 0;
         }
         .typing-indicator span {
             width: 6px;
@@ -131,38 +136,86 @@ export class LiveQAView extends LitElement {
             40% { transform: translateY(-6px); }
         }
 
-        /* Markdown styles */
-        .markdown-content p { margin: 4px 0 8px 0; }
-        .markdown-content ul, .markdown-content ol { margin: 4px 0; padding-left: 18px; }
-        .markdown-content li { margin: 3px 0; }
-        .markdown-content strong { font-weight: 600; color: #f8f8f2; }
-        .markdown-content em { font-style: italic; color: #f1fa8c; }
-        .markdown-content code {
-            font-family: 'Monaco', 'Menlo', monospace;
+        /* ── Markdown content ── */
+        .answer-content p { margin: 0 0 10px 0; }
+        .answer-content p:last-child { margin-bottom: 0; }
+
+        .answer-content ul,
+        .answer-content ol {
+            margin: 6px 0 10px 0;
+            padding-left: 20px;
+        }
+        .answer-content li {
+            margin: 4px 0;
+            line-height: 1.55;
+        }
+        .answer-content li:last-child { margin-bottom: 0; }
+
+        .answer-content strong {
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .answer-content em {
+            font-style: italic;
+            color: #f1fa8c;
+        }
+
+        .answer-content code {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
             font-size: 11px;
-            background: rgba(255,255,255,0.1);
-            padding: 1px 4px;
-            border-radius: 3px;
+            background: rgba(255,255,255,0.12);
+            padding: 2px 5px;
+            border-radius: 4px;
             color: #ffd700;
         }
-        .markdown-content pre {
-            background: rgba(0,0,0,0.4);
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin: 6px 0;
+
+        .answer-content pre {
+            background: rgba(0,0,0,0.45);
+            border-radius: 7px;
+            padding: 12px 14px;
+            margin: 10px 0;
             overflow-x: auto;
             border: 1px solid rgba(255,255,255,0.1);
         }
-        .markdown-content pre code {
+        .answer-content pre code {
             background: transparent;
             padding: 0;
             color: #f8f8f2;
+            font-size: 11px;
+            white-space: pre;
+            word-wrap: normal;
         }
-        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
-            color: rgba(255,255,255,0.9);
-            margin: 8px 0 4px 0;
+
+        .answer-content h1,
+        .answer-content h2,
+        .answer-content h3 {
+            color: rgba(255,255,255,0.95);
+            margin: 14px 0 6px 0;
             font-size: 13px;
+            font-weight: 600;
         }
+        .answer-content h1:first-child,
+        .answer-content h2:first-child,
+        .answer-content h3:first-child { margin-top: 0; }
+
+        .answer-content blockquote {
+            border-left: 3px solid rgba(255,255,255,0.3);
+            margin: 8px 0;
+            padding: 4px 10px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .answer-content a { color: #8be9fd; text-decoration: none; }
+        .answer-content a:hover { text-decoration: underline; }
+
+        /* hljs overrides */
+        .hljs-keyword { color: #ff79c6; }
+        .hljs-string  { color: #f1fa8c; }
+        .hljs-comment { color: #6272a4; }
+        .hljs-number  { color: #bd93f9; }
+        .hljs-function, .hljs-title { color: #50fa7b; }
+        .hljs-variable, .hljs-built_in { color: #8be9fd; }
+        .hljs-attr    { color: #50fa7b; }
     `;
 
     static properties = {
@@ -176,10 +229,13 @@ export class LiveQAView extends LitElement {
         this.qaHistory = [];
         this.currentIndex = -1;
         this.isVisible = true;
-        this.marked = null;
-        this.DOMPurify = null;
-        this.isLibrariesLoaded = false;
-        this._loadLibraries();
+        this.hljs = null;
+        this._smdParser = null;
+        this._smdContainer = null;
+        this._smdLastLength = 0;
+        this._renderedEntryId = null;
+        this._renderedEntryComplete = false;
+        this._loadHljs();
     }
 
     connectedCallback() {
@@ -189,7 +245,6 @@ export class LiveQAView extends LitElement {
                 this.qaHistory = data.history || [];
                 this.currentIndex = data.currentIndex ?? -1;
                 this.requestUpdate();
-                this.updateComplete.then(() => this._renderMarkdown());
             });
         }
     }
@@ -208,8 +263,7 @@ export class LiveQAView extends LitElement {
     }
 
     getQAText() {
-        if (this.qaHistory.length === 0) return '';
-        const entry = this.qaHistory[this.currentIndex];
+        const entry = this.currentIndex >= 0 ? this.qaHistory[this.currentIndex] : null;
         if (!entry) return '';
         return `Питання: ${entry.questionText}\n\nВідповідь:\n${entry.answer}`;
     }
@@ -217,6 +271,11 @@ export class LiveQAView extends LitElement {
     reset() {
         this.qaHistory = [];
         this.currentIndex = -1;
+        this._smdParser = null;
+        this._smdContainer = null;
+        this._smdLastLength = 0;
+        this._renderedEntryId = null;
+        this._renderedEntryComplete = false;
         this.requestUpdate();
     }
 
@@ -265,8 +324,7 @@ export class LiveQAView extends LitElement {
                         ? html`<div class="typing-indicator">
                                 <span></span><span></span><span></span>
                             </div>`
-                        : html`<div class="markdown-content"
-                                data-qa-id="${entry.id}">${entry.answer}</div>`}
+                        : html`<div class="answer-content"></div>`}
                 </div>
             </div>
         `;
@@ -274,40 +332,90 @@ export class LiveQAView extends LitElement {
 
     updated() {
         super.updated();
-        this._renderMarkdown();
+        this._renderAnswer();
     }
 
-    _renderMarkdown() {
-        if (!this.isLibrariesLoaded || !this.marked) return;
-        const els = this.shadowRoot?.querySelectorAll('.markdown-content[data-qa-id]');
-        els?.forEach(el => {
-            const rawText = el.textContent || '';
-            if (!rawText.trim()) return;
-            try {
-                let parsed = this.marked(rawText);
-                if (this.DOMPurify) parsed = this.DOMPurify.sanitize(parsed);
-                el.innerHTML = parsed;
-            } catch {}
+    _renderAnswer() {
+        const total = this.qaHistory.length;
+        const entry = this.currentIndex >= 0 && this.currentIndex < total
+            ? this.qaHistory[this.currentIndex]
+            : null;
+
+        if (!entry || (entry.isLoading && !entry.answer)) return;
+
+        const container = this.shadowRoot?.querySelector('.answer-content');
+        if (!container) return;
+
+        // Different entry — reset SMD state and clear container
+        if (this._renderedEntryId !== entry.id) {
+            this._renderedEntryId = entry.id;
+            this._smdParser = null;
+            this._smdContainer = null;
+            this._smdLastLength = 0;
+            this._renderedEntryComplete = false;
+            container.innerHTML = '';
+        }
+
+        if (!entry.answer) return;
+        if (this._renderedEntryComplete) return;
+
+        // Completed entry (navigated to old answer or just finished) — render full text
+        if (!entry.isLoading && this._smdParser === null) {
+            container.innerHTML = '';
+            const renderer = default_renderer(container);
+            const p = parser(renderer);
+            parser_write(p, entry.answer);
+            parser_end(p);
+            this._applyHljs(container);
+            this._renderedEntryComplete = true;
+            return;
+        }
+
+        // Streaming entry — feed delta to SMD parser
+        if (!this._smdParser) {
+            container.innerHTML = '';
+            const renderer = default_renderer(container);
+            this._smdParser = parser(renderer);
+            this._smdContainer = container;
+            this._smdLastLength = 0;
+        }
+
+        const newText = entry.answer.slice(this._smdLastLength);
+        if (newText.length > 0) {
+            parser_write(this._smdParser, newText);
+            this._smdLastLength = entry.answer.length;
+        }
+
+        if (!entry.isLoading) {
+            parser_end(this._smdParser);
+            this._smdParser = null;
+            this._applyHljs(container);
+            this._renderedEntryComplete = true;
+        }
+    }
+
+    _applyHljs(container) {
+        if (!this.hljs) return;
+        container.querySelectorAll('pre code').forEach(block => {
+            if (!block.hasAttribute('data-highlighted')) {
+                try { this.hljs.highlightElement(block); } catch {}
+                block.setAttribute('data-highlighted', 'true');
+            }
         });
     }
 
-    async _loadLibraries() {
+    async _loadHljs() {
         try {
-            if (!window.marked) await this._loadScript('../../../assets/marked-4.3.0.min.js');
-            if (!window.DOMPurify) await this._loadScript('../../../assets/dompurify-3.0.7.min.js');
-            this.marked = window.marked;
-            this.DOMPurify = window.DOMPurify;
-            if (this.marked) {
-                this.marked.setOptions({ breaks: true, gfm: true });
-                this.isLibrariesLoaded = true;
-            }
+            if (!window.hljs) await this._loadScript('../../assets/highlight-11.9.0.min.js');
+            this.hljs = window.hljs;
         } catch (err) {
-            console.warn('[LiveQAView] Markdown libs failed to load:', err);
+            console.warn('[LiveQAView] hljs load failed:', err);
         }
     }
 
     _loadScript(src) {
         return new Promise((resolve, reject) => {
+            if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
             const s = document.createElement('script');
             s.src = src;
             s.onload = resolve;

@@ -8,7 +8,7 @@ class LiveQAService {
         this.myTurnCount = 0;     // my turns since last question
         this.isAnalyzing = false;
         this.debounceTimer = null;
-        this.DEBOUNCE_MS = 1500;
+        this.DEBOUNCE_MS = 500; // STT already batches for 2s; total delay = 2.5s from last word
         this.MY_TURNS_TO_ANSWER = 3;
     }
 
@@ -122,6 +122,10 @@ class LiveQAService {
             });
 
             const response = await streamingLLM.streamChat(messages);
+            if (response && !response.ok) {
+                const errText = await response.text().catch(() => 'HTTP error');
+                throw new Error(`LLM ${response.status}: ${errText.substring(0, 200)}`);
+            }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
