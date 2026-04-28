@@ -7,8 +7,9 @@ class LiveQAService {
         this.theirBuffer = [];    // accumulate interviewer speech segments
         this.myTurnCount = 0;     // my turns since last question
         this.isAnalyzing = false;
+        this.isManualMode = false; // true = collecting, no auto-trigger until 2nd press
         this.debounceTimer = null;
-        this.DEBOUNCE_MS = 200; // STT already batches; small extra delay before triggering LLM
+        this.DEBOUNCE_MS = 200;
         this.MY_TURNS_TO_ANSWER = 3;
     }
 
@@ -25,8 +26,14 @@ class LiveQAService {
         this.myTurnCount = 0;
         this.theirBuffer.push(trimmed);
 
+        if (this.isManualMode) return; // user is collecting manually — no auto-trigger
+
         clearTimeout(this.debounceTimer);
-        this.debounceTimer = setTimeout(() => this._processBuffer(), this.DEBOUNCE_MS);
+
+        const combined = this.theirBuffer.join(' ');
+        const looksComplete = /[?!]/.test(combined) || combined.length >= 120;
+        const delay = looksComplete ? this.DEBOUNCE_MS : 3000;
+        this.debounceTimer = setTimeout(() => this._processBuffer(), delay);
     }
 
     addMyTurn(text) {
@@ -42,7 +49,7 @@ class LiveQAService {
         }
     }
 
-    async _processBuffer() {
+    async _processBuffer(force = false) {
         if (this.theirBuffer.length === 0) return;
 
         // If still analyzing, retry shortly
@@ -60,6 +67,21 @@ class LiveQAService {
         // Skip if this is the same pending unanswered question
         const last = this.qaHistory[this.qaHistory.length - 1];
         if (last && !last.isAnswered && last.questionText === questionText) return;
+
+        // Question completeness check (skip if forced manually or obviously complete)
+        if (!force) {
+            const obviouslyComplete = (/[?!]/.test(questionText) && questionText.length >= 25)
+                || questionText.length >= 120;
+
+            if (!obviouslyComplete) {
+                const complete = await this._classifyQuestion(questionText);
+                if (!complete) {
+                    // Restore buffer and wait for natural continuation via next STT chunk
+                    this.theirBuffer = [questionText];
+                    return;
+                }
+            }
+        }
 
         this.isAnalyzing = true;
         this.myTurnCount = 0;
@@ -165,6 +187,56 @@ class LiveQAService {
         this._sendUpdate();
     }
 
+    toggleManualMode() {
+        if (this.isManualMode) {
+            // Second press — fire everything collected
+            this.isManualMode = false;
+            clearTimeout(this.debounceTimer);
+            this._sendUpdate();
+            this._processBuffer(true);
+        } else {
+            // First press — enter collecting mode, stop any pending auto-trigger
+            this.isManualMode = true;
+            clearTimeout(this.debounceTimer);
+            this._sendUpdate();
+        }
+    }
+
+    async _classifyQuestion(text) {
+        try {
+            const { createLLM } = require('../../common/ai/factory');
+            const modelStateService = require('../../common/services/modelStateService');
+            const modelInfo = await modelStateService.getCurrentModelInfo('llm');
+            if (!modelInfo?.apiKey) return true;
+
+            // Always use a cheap fast model for YES/NO classification
+            const classifierModel = modelInfo.provider === 'anthropic'
+                ? 'claude-haiku-4-5-20251001'
+                : modelInfo.provider === 'gemini'
+                    ? 'gemini-2.5-flash'
+                    : 'gpt-4o-mini'; // default for openai / openai-glass
+
+            const llm = createLLM(modelInfo.provider, {
+                apiKey: modelInfo.apiKey,
+                model: classifierModel,
+                temperature: 0,
+                maxTokens: 5,
+            });
+
+            const result = await llm.chat([
+                {
+                    role: 'system',
+                    content: 'Reply ONLY with YES or NO. Is the following a complete question or complete thought that deserves a detailed response? If it is a sentence fragment or an incomplete thought, reply NO.',
+                },
+                { role: 'user', content: text },
+            ]);
+
+            return result.content?.trim().toUpperCase().startsWith('YES') ?? true;
+        } catch {
+            return true; // on error, assume complete and proceed
+        }
+    }
+
     navigate(direction) {
         const newIdx = this.currentViewIndex + direction;
         if (newIdx >= 0 && newIdx < this.qaHistory.length) {
@@ -180,6 +252,7 @@ class LiveQAService {
             win.webContents.send('live-qa-update', {
                 history: this.qaHistory,
                 currentIndex: this.currentViewIndex,
+                isManualMode: this.isManualMode,
             });
         }
     }
@@ -191,6 +264,7 @@ class LiveQAService {
         this.theirBuffer = [];
         this.myTurnCount = 0;
         this.isAnalyzing = false;
+        this.isManualMode = false;
     }
 }
 

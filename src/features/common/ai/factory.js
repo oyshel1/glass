@@ -22,9 +22,12 @@ const PROVIDERS = {
       name: 'OpenAI',
       handler: () => require("./providers/openai"),
       llmModels: [
-          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano 👁 ($0.10/1M — cheapest vision)' },
+          { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano 👁 ($0.10/1M — cheapest)' },
           { id: 'gpt-4o-mini', name: 'GPT-4o Mini 👁 ($0.15/1M — best value)' },
           { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini 👁 ($0.40/1M)' },
+          { id: 'gpt-4.1', name: 'GPT-4.1 👁 ($2/1M — flagship)' },
+          { id: 'gpt-4o', name: 'GPT-4o 👁 ($2.50/1M)' },
+          { id: 'o4-mini', name: 'o4-mini 🧠 ($1.10/1M — reasoning)' },
       ],
       sttModels: [
           { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe ($0.003/min)' },

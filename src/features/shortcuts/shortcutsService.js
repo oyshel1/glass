@@ -72,6 +72,7 @@ class ShortcutsService {
             nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
             scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
             scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
+            liveQATrigger: isMac ? 'Cmd+Shift+A' : 'Ctrl+Shift+A',
         };
     }
 
@@ -270,6 +271,12 @@ class ShortcutsService {
                     break;
                 case 'nextResponse':
                     callback = () => sendToRenderer('navigate-next-response');
+                    break;
+                case 'liveQATrigger':
+                    callback = () => {
+                        const listenService = getListenService();
+                        listenService.liveQAService?.toggleManualMode();
+                    };
                     break;
             }
             

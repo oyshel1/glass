@@ -227,7 +227,7 @@ export class SttView extends LitElement {
     }
 
     _buildQuery(text) {
-        return `Дай детальну відповідь на питання з інтерв'ю:\n\n"${text}"`;
+        return text.trim();
     }
 
     _joinSelected() {

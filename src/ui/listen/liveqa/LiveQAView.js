@@ -83,6 +83,19 @@ export class LiveQAView extends LitElement {
             font-style: italic;
         }
 
+        .collecting-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            color: #fff;
+            background: rgba(220,50,50,0.75);
+            border-radius: 10px;
+            padding: 2px 8px;
+            margin-left: auto;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+
         .question-box {
             background: rgba(255,255,255,0.06);
             border-left: 2px solid rgba(255,255,255,0.25);
@@ -222,6 +235,7 @@ export class LiveQAView extends LitElement {
         qaHistory: { type: Array },
         currentIndex: { type: Number },
         isVisible: { type: Boolean },
+        isManualMode: { type: Boolean },
     };
 
     constructor() {
@@ -229,6 +243,7 @@ export class LiveQAView extends LitElement {
         this.qaHistory = [];
         this.currentIndex = -1;
         this.isVisible = true;
+        this.isManualMode = false;
         this.hljs = null;
         this._smdParser = null;
         this._smdContainer = null;
@@ -244,6 +259,7 @@ export class LiveQAView extends LitElement {
             window.api.liveQAView.onLiveQAUpdate((event, data) => {
                 this.qaHistory = data.history || [];
                 this.currentIndex = data.currentIndex ?? -1;
+                this.isManualMode = data.isManualMode ?? false;
                 this.requestUpdate();
                 this.updateComplete.then(() => {
                     this.dispatchEvent(new CustomEvent('liveqa-updated', { bubbles: true }));
@@ -306,7 +322,9 @@ export class LiveQAView extends LitElement {
         if (!entry) {
             return html`
                 <div class="container">
-                    <div class="empty-state">Очікую питання від інтерв'юера...</div>
+                    ${this.isManualMode
+                        ? html`<div class="collecting-badge" style="margin:8px auto;width:fit-content">🔴 Збираю… ⌘⇧A щоб надіслати</div>`
+                        : html`<div class="empty-state">Очікую питання… або ⌘⇧A щоб запустити вручну</div>`}
                 </div>`;
         }
 
@@ -327,6 +345,9 @@ export class LiveQAView extends LitElement {
                         : ''}
                     ${isLatest && !entry.isAnswered && !entry.isLoading
                         ? html`<span class="live-dot"></span>`
+                        : ''}
+                    ${this.isManualMode
+                        ? html`<span class="collecting-badge">🔴 Збираю… ⌘⇧A надіслати</span>`
                         : ''}
                 </div>
 
