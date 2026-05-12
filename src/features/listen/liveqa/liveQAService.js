@@ -8,6 +8,7 @@ class LiveQAService {
         this.myTurnCount = 0;     // my turns since last question
         this.isAnalyzing = false;
         this.isManualMode = false; // true = collecting, no auto-trigger until 2nd press
+        this.langMode = 'auto';   // 'auto' | 'en'
         this.debounceTimer = null;
         this.DEBOUNCE_MS = 200;
         this.MY_TURNS_TO_ANSWER = 3;
@@ -127,7 +128,7 @@ class LiveQAService {
             .map(q => `Питання: ${q.questionText}\nМоя відповідь: ${q.answer.substring(0, 300)}`)
             .join('\n\n');
 
-        const systemPrompt = getSystemPrompt('pickle_glass', recentContext, false);
+        const systemPrompt = getSystemPrompt('pickle_glass', recentContext, false, this.langMode === 'en' ? 'en' : null);
         const messages = [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: `Питання від інтерв'юера: "${entry.questionText}"` },
@@ -185,6 +186,10 @@ class LiveQAService {
 
         entry.isLoading = false;
         this._sendUpdate();
+    }
+
+    setLangMode(mode) {
+        this.langMode = mode === 'en' ? 'en' : 'auto';
     }
 
     toggleManualMode() {
@@ -253,6 +258,7 @@ class LiveQAService {
                 history: this.qaHistory,
                 currentIndex: this.currentViewIndex,
                 isManualMode: this.isManualMode,
+                langMode: this.langMode,
             });
         }
     }

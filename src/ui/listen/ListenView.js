@@ -184,7 +184,7 @@ export class ListenView extends LitElement {
             white-space: nowrap;
             flex: 1;
             min-width: 0;
-            max-width: 200px;
+            max-width: 140px;
         }
 
         .bar-left-text-content {
@@ -201,7 +201,6 @@ export class ListenView extends LitElement {
             gap: 4px;
             align-items: center;
             flex-shrink: 0;
-            width: 120px;
             justify-content: flex-end;
             box-sizing: border-box;
             padding: 4px;
@@ -315,6 +314,40 @@ export class ListenView extends LitElement {
             color: rgba(255, 255, 255, 0.7);
         }
         
+        .lang-pill {
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 5px;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+            font-family: 'Helvetica Neue', sans-serif;
+            line-height: 1;
+        }
+        .lang-btn:hover { color: rgba(255,255,255,0.8); }
+        .lang-btn.active {
+            background: rgba(255,255,255,0.15);
+            color: #ffffff;
+        }
+        .lang-btn.en-active {
+            background: rgba(0,180,120,0.35);
+            color: #7fffd4;
+        }
+
         .mode-toggle {
             display: flex;
             align-items: center;
@@ -475,6 +508,7 @@ export class ListenView extends LitElement {
     static properties = {
         viewMode: { type: String },
         insightsMode: { type: String },
+        langMode: { type: String },
         isHovering: { type: Boolean },
         isAnimating: { type: Boolean },
         micMuted: { type: Boolean },
@@ -491,6 +525,7 @@ export class ListenView extends LitElement {
         this.hasCompletedRecording = false;
         this.viewMode = 'insights';
         this.insightsMode = 'liveqa';
+        this.langMode = 'auto';
         this.isHovering = false;
         this.isAnimating = false;
         this.micMuted = false;
@@ -610,6 +645,13 @@ export class ListenView extends LitElement {
         this.requestUpdate();
     }
 
+    setLangMode(mode) {
+        if (this.langMode === mode) return;
+        this.langMode = mode;
+        this.requestUpdate();
+        window.api?.listenView?.setLanguageMode(mode);
+    }
+
     toggleMic() {
         this.micMuted = !this.micMuted;
         if (window.listenCapture?.setMicMuted) {
@@ -716,6 +758,18 @@ export class ListenView extends LitElement {
                         <span class="bar-left-text-content ${this.isAnimating ? 'slide-in' : ''}">${displayText}</span>
                     </div>
                     <div class="bar-controls">
+                        <div class="lang-pill">
+                            <button
+                                class="lang-btn ${this.langMode === 'auto' ? 'active' : ''}"
+                                @click=${() => this.setLangMode('auto')}
+                                title="AUTO — мікс мов (UK/EN)"
+                            >AUTO</button>
+                            <button
+                                class="lang-btn ${this.langMode === 'en' ? 'en-active' : ''}"
+                                @click=${() => this.setLangMode('en')}
+                                title="EN — тільки англійська STT + відповіді по-англійськи"
+                            >EN</button>
+                        </div>
                         <button class="toggle-button" @click=${this.toggleViewMode}>
                             ${this.viewMode === 'insights'
                                 ? html`

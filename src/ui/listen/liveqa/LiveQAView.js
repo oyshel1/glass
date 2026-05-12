@@ -236,6 +236,7 @@ export class LiveQAView extends LitElement {
         currentIndex: { type: Number },
         isVisible: { type: Boolean },
         isManualMode: { type: Boolean },
+        langMode: { type: String },
     };
 
     constructor() {
@@ -244,6 +245,7 @@ export class LiveQAView extends LitElement {
         this.currentIndex = -1;
         this.isVisible = true;
         this.isManualMode = false;
+        this.langMode = 'auto';
         this.hljs = null;
         this._smdParser = null;
         this._smdContainer = null;
@@ -260,6 +262,7 @@ export class LiveQAView extends LitElement {
                 this.qaHistory = data.history || [];
                 this.currentIndex = data.currentIndex ?? -1;
                 this.isManualMode = data.isManualMode ?? false;
+                this.langMode = data.langMode ?? 'auto';
                 this.requestUpdate();
                 this.updateComplete.then(() => {
                     this.dispatchEvent(new CustomEvent('liveqa-updated', { bubbles: true }));

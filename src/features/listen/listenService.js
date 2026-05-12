@@ -247,6 +247,14 @@ class ListenService {
         return this.sttService.isSessionActive();
     }
 
+    async setLanguageMode(mode) {
+        const lang = mode === 'en' ? 'en' : 'uk';
+        this.liveQAService?.setLangMode(mode);
+        if (this.isSessionActive()) {
+            await this.sttService.renewSessions(lang);
+        }
+    }
+
     async closeSession() {
         try {
             this.sendToRenderer('change-listen-capture-state', { status: "stop" });

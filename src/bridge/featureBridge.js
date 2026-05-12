@@ -102,6 +102,16 @@ module.exports = {
         listenService.liveQAService.navigate(direction);
         return { success: true };
     });
+    ipcMain.handle('listen:setLanguageMode', async (event, mode) => {
+        try {
+            await listenService.setLanguageMode(mode);
+            return { success: true };
+        } catch (error) {
+            console.error('[FeatureBridge] listen:setLanguageMode failed', error.message);
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.handle('listen:changeSession', async (event, listenButtonText) => {
       console.log('[FeatureBridge] listen:changeSession from mainheader', listenButtonText);
       try {
